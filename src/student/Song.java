@@ -1,11 +1,12 @@
 package student;
 
+import java.io.Serializable;
 import java.util.*;
 
 /*
  * song class to hold strings for a song's artist, title, and lyrics
  */
-public class Song implements Comparable<Song> {
+public class Song implements Comparable<Song>, Serializable {
 
     private String artist, title, lyrics;
 
@@ -21,6 +22,13 @@ public class Song implements Comparable<Song> {
         public int compare(Song s1, Song s2) {
             cmpCnt++;
             return s1.artist.compareToIgnoreCase(s2.artist);
+        }
+    }
+
+    public static class CmpTitle extends CmpCnt implements Comparator<Song> {
+        public int compare(Song s1, Song s2) {
+            cmpCnt++;
+            return s1.title.compareToIgnoreCase(s2.title);
         }
     }
 

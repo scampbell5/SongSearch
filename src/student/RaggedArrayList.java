@@ -2,12 +2,8 @@ package student;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Random;
-import java.util.Scanner;
+import java.lang.reflect.Array;
+import java.util.*;
 
 /*
  * RaggedArrayList.java
@@ -98,16 +94,24 @@ public class RaggedArrayList<E> implements Iterable<E> {
         // can be used internally to scan through the array for sublist
         // also can be used to implement the iterator
         public void moveToNext() {
-            // TO DO
-
+            //While loc.Level2Index < numOfUsed -1; Keep incrementing Level2Index.
+            if (this.level2Index < ((L2Array) l1Array[this.level1Index]).numUsed - 1) {
+                this.level2Index++;
+                //Resets Level2Index to 0, increments L1Array to next position.
+            } else {
+                this.level2Index = 0;
+                this.level1Index++;
+            }
         }
     }
 
+    /*
+    //Old code before implementing Binary Search
     // find 1st matching entry
     // returns ListLoc of 1st matching item
     // or of 1st item greater than the item if no match
     // this might be an unused slot at the end of a level 2 array
-    public ListLoc findFront(E item) {
+    public ListLoc findFront1(E item) {
         L2Array currentArray;
         ListLoc tempLocation = new ListLoc(0, 0);
         for (int i = 0; i < l1NumUsed; i++) {
@@ -118,8 +122,8 @@ public class RaggedArrayList<E> implements Iterable<E> {
                 return new ListLoc(i, 0);
             }
 
-            int compare = comp.compare(item, currentArray.items[currentArray.numUsed -1]);
-            if (compare <= 0 || i == l1NumUsed -1){
+            int compare = comp.compare(item, currentArray.items[currentArray.numUsed - 1]);
+            if (compare <= 0 || i == l1NumUsed - 1) {
                 for (int j = 0; j < currentArray.numUsed; j++) {
                     int compare2 = comp.compare(item, currentArray.items[j]);
                     if (compare2 <= 0) {
@@ -136,11 +140,87 @@ public class RaggedArrayList<E> implements Iterable<E> {
         return tempLocation;            // when finished should return: new ListLoc(l1,l2);
     }
 
+*/
+
+    //Find the position of the very first item.
+    //Returns the position where item should be if item is not found.
+    //Uses binary search to search through the outer (L1Arrays) to find the inner L2Array where item should be
+    //Uses binary search on the L2Array, after locating location, returns a ListLocation for the item.
+    public ListLoc findFront(E item) {
+        ListLoc insertLocation = new ListLoc(0, 0);
+        int l1Low = 0;
+        int l1Mid = 0;
+        int l1High = l1NumUsed - 1;
+        int l2Low = 0;
+        int l2Mid = 0;
+        int l2High = 0;
+        L2Array currentArray = (L2Array) l1Array[l1Mid];
+
+        //Edge case to check to see if L1 is empty. Returns the first spot.
+        if (currentArray.numUsed == 0) {
+            return insertLocation;
+        }
+
+        //First search on outer array to find the inner array.
+        int compare = 0;
+        while (l1Low <= l1High) {
+            l1Mid = (l1High + l1Low) / 2;
+            currentArray = (L2Array) l1Array[l1Mid];
+            compare = comp.compare(currentArray.items[currentArray.numUsed - 1], item);
+            if (compare < 0) {
+                l1Low = l1Mid + 1;
+            } else {
+                l1High = l1Mid - 1;
+            }
+        }
+
+        if (compare < 0 && l1Mid + 1 != l1NumUsed) {
+            l1Mid++;
+        }
+
+        //Update the location to the new level 1 index just found.
+        insertLocation.level1Index = l1Mid;
+        currentArray = (L2Array) l1Array[l1Mid];
+        l2High = currentArray.numUsed - 1;
+
+
+        //Start searching on the inner array to find insertion point.
+        while (l2Low <= l2High) {
+            l2Mid = (l2Low + l2High) / 2;
+            compare = comp.compare(currentArray.items[l2Mid], item);
+            if (compare == 0) {
+                break;
+            }
+            if (compare < 0) {
+                l2Low = l2Mid + 1;
+            } else {
+                l2High = l2Mid - 1;
+            }
+        }
+        //If compare < 0, that means item was not found and should be inserted in the next possible slow.
+        if (compare < 0) {
+            l2Mid++;
+        }
+
+        for (int i = l2Mid; i > 0; i--) {
+            compare = comp.compare(item, currentArray.items[i - 1]);
+            if (compare != 0) {
+                break;
+            }
+            l2Mid--;
+        }
+        insertLocation.level2Index = l2Mid;
+        return insertLocation;
+    }
+
+
+    //Old search using LinearSearch before implementing Binary Search.
+    /*
     // find location after the last matching entry
     // or if no match, it finds the index of the next larger item
     // this is the position to add a new entry
     // this might be an unused slot at the end of a level 2 array
-    public ListLoc findEnd(E item) {
+    public ListLoc findEnd1(E item) {
 
         //currentArray will be the currentArray we're scanning.
         L2Array currentArray;
@@ -172,6 +252,78 @@ public class RaggedArrayList<E> implements Iterable<E> {
         return new ListLoc(0, 0);            // when finished should return: new ListLoc(l1,l2);
     }
 
+*/
+
+    //Find the position of the very last item.
+    //Returns the position where item should be if item is not found.
+    //Uses binary search to search through the outer (L1Arrays) to find the inner L2Array where item should be
+    //Uses binary search on the L2Array, after locating location, returns a ListLocation for the item.
+    public ListLoc findEnd(E item) {
+        int l2High;
+        int l2Mid;
+        int compare;
+        int l1Low = 0;
+        int l1High = l1NumUsed - 1;
+        int l1Mid = 0;
+        int l2Low = 0;
+
+
+        ListLoc insertLocation = new ListLoc(0, 0);
+
+        L2Array currentArray = (L2Array) l1Array[l1Mid];
+
+        //Checks to see if array is empty.
+        if (currentArray.numUsed == 0) {
+            return insertLocation;
+        }
+
+        l1Mid = (l1High + l1Low) / 2;
+        while (l1Low <= l1High) {
+            currentArray = (L2Array) l1Array[l1Mid];
+            compare = comp.compare(currentArray.items[0], item);
+            if (compare <= 0) {
+                l1Low = l1Mid + 1;
+            } else {
+                l1High = l1Mid - 1;
+            }
+            l1Mid = (l1High + l1Low) / 2;
+        }
+
+        insertLocation.level1Index = l1Mid;
+        currentArray = (L2Array) l1Array[l1Mid];
+
+        l2High = currentArray.numUsed - 1;
+
+        l2Mid = (l2Low + l2High) / 2;
+        while (l2Low <= l2High) {
+            compare = comp.compare(currentArray.items[l2Mid], item);
+            if (compare == 0) {
+                break;
+            }
+            if (compare < 0) {
+                l2Low = l2Mid + 1;
+            } else {
+                l2High = l2Mid - 1;
+            }
+            l2Mid = (l2Low + l2High) / 2;
+        }
+        compare = comp.compare(currentArray.items[l2Mid], item);
+        if (compare <= 0) {
+            for (int i = l2Mid + 1; i < currentArray.numUsed; i++) {
+                compare = comp.compare(item, currentArray.items[i]);
+                if (compare >= 0) {
+                    l2Mid++;
+                } else {
+                    break;
+                }
+            }
+            l2Mid++;
+        }
+
+        insertLocation.level2Index = l2Mid;
+        return insertLocation;            // when finished should return: new ListLoc(l1,l2);
+    }
+
     /**
      * add object after any other matching values
      * findEnd will give the insertion position
@@ -186,7 +338,7 @@ public class RaggedArrayList<E> implements Iterable<E> {
 
 
         //Loops through level2 array, adding item and shifting items down.
-        for (int i = locToAdd.level2Index; i < l2ArrayToAddItem.numUsed; i++){
+        for (int i = locToAdd.level2Index; i < l2ArrayToAddItem.numUsed; i++) {
             E tmpItem = l2ArrayToAddItem.items[i];
             l2ArrayToAddItem.items[i] = item;
             item = tmpItem;
@@ -200,18 +352,18 @@ public class RaggedArrayList<E> implements Iterable<E> {
         //We grow by 2 if the array length is less than level1 array length.
         //We split if level 2 array length is >= level 1 array length.
         //These specs were outlined in the assignment.
-        if (l2ArrayToAddItem.items.length == l2ArrayToAddItem.numUsed){
+        if (l2ArrayToAddItem.items.length == l2ArrayToAddItem.numUsed) {
             //If l2Array is smaller than l1Array, we double.
-            if (l2ArrayToAddItem.numUsed < l1NumUsed){
+            if (l2ArrayToAddItem.numUsed < l1NumUsed) {
                 //Grows array by 2.
-                l2ArrayToAddItem.items = Arrays.copyOf(l2ArrayToAddItem.items,l2ArrayToAddItem.numUsed*2);
+                l2ArrayToAddItem.items = Arrays.copyOf(l2ArrayToAddItem.items, l2ArrayToAddItem.numUsed * 2);
 
-            //Else if it become larger, we must split the array into two new arrays.
-            }else{
+                //Else if it become larger, we must split the array into two new arrays.
+            } else {
                 //Create a new level2 array for second half of first level2 array we added to.
                 L2Array l2ArrayToAddItem2 = new L2Array(l2ArrayToAddItem.items.length);
                 //Copy the second half of the level2 array to the new array.
-                System.arraycopy(l2ArrayToAddItem.items, l2ArrayToAddItem.numUsed / 2, l2ArrayToAddItem2.items, 0, l2ArrayToAddItem.numUsed /2);
+                System.arraycopy(l2ArrayToAddItem.items, l2ArrayToAddItem.numUsed / 2, l2ArrayToAddItem2.items, 0, l2ArrayToAddItem.numUsed / 2);
                 //Fills out the original L2Array with blanks, second half was copied to a new array.
                 Arrays.fill(l2ArrayToAddItem.items, l2ArrayToAddItem.numUsed / 2, l2ArrayToAddItem.numUsed, null);
 
@@ -222,7 +374,7 @@ public class RaggedArrayList<E> implements Iterable<E> {
                 l1Array[locToAdd.level1Index] = l2ArrayToAddItem;
 
                 //Adds new L2Array to L1Array, reassigns each L2Array.
-                for (int i = locToAdd.level1Index + 1; i < l1NumUsed; i++){
+                for (int i = locToAdd.level1Index + 1; i < l1NumUsed; i++) {
                     L2Array tmpArray = (L2Array) l1Array[i];
                     l1Array[i] = l2ArrayToAddItem2;
                     l2ArrayToAddItem2 = tmpArray;
@@ -234,12 +386,13 @@ public class RaggedArrayList<E> implements Iterable<E> {
                 l1NumUsed++;
 
                 //Checks to see if l1NumOfUsed = Length, if so grows L1Array by 2.
-                if (l1NumUsed == l1Array.length){
-                    l1Array = Arrays.copyOf(l1Array,l1NumUsed * 2);
+                if (l1NumUsed == l1Array.length) {
+                    l1Array = Arrays.copyOf(l1Array, l1NumUsed * 2);
                 }
             }
         }
 
+        size++;
         return true;
     }
 
@@ -247,9 +400,10 @@ public class RaggedArrayList<E> implements Iterable<E> {
      * check if list contains a match
      */
     public boolean contains(E item) {
-        // TO DO
-
-        return false;
+        //Finds the index of the item. findFront returns where it is, or where it should be in list.
+        //Have to perform one compare to verify item == item in L2Array
+        ListLoc indexFound = findFront(item);
+        return item.equals(((L2Array) l1Array[indexFound.level1Index]).items[indexFound.level2Index]);
     }
 
     /**
@@ -259,9 +413,22 @@ public class RaggedArrayList<E> implements Iterable<E> {
      * @return the filled in array
      */
     public E[] toArray(E[] a) {
-        // TO DO
 
-        return a;
+        //If size==0, return empty array.
+        if (size() == 0) {
+            return a;
+        } else {
+            if (a.length == size()) {
+                Iterator tmpIter = iterator();
+                int i = 0;
+                while (tmpIter.hasNext()) {
+                    a[i] = (E) tmpIter.next();
+                    i++;
+                }
+                return a;
+            }
+            return a;
+        }
     }
 
     /**
@@ -275,9 +442,17 @@ public class RaggedArrayList<E> implements Iterable<E> {
      * @return the sublist
      */
     public RaggedArrayList<E> subList(E fromElement, E toElement) {
-        // TO DO
-
         RaggedArrayList<E> result = new RaggedArrayList<E>(comp);
+        //Find beginning item location, endItem location.
+        ListLoc locFront = findFront(fromElement);
+        ListLoc locEnd = findFront(toElement);
+
+        //While two locations do not equal eachother, iterate through adding each item to new array.
+        while (!locFront.equals(locEnd) && locFront.level1Index < l1NumUsed) {
+            result.add(((L2Array) l1Array[locFront.level1Index]).items[locFront.level2Index]);
+            locFront.moveToNext();
+        }
+
         return result;
     }
 
@@ -309,9 +484,8 @@ public class RaggedArrayList<E> implements Iterable<E> {
          * check if more items
          */
         public boolean hasNext() {
-            // TO DO
-
-            return false;
+            //If level1Index > l1NumOfUsed, out of bounds and will return false.
+            return loc.level1Index < l1NumUsed;
         }
 
         /**
@@ -319,9 +493,15 @@ public class RaggedArrayList<E> implements Iterable<E> {
          * throws NoSuchElementException if off end of list
          */
         public E next() {
-            // TO DO
-
-            throw new IndexOutOfBoundsException();
+            //Throw exception if out of bounds.
+            if (!hasNext()) {
+                throw new IndexOutOfBoundsException();
+            } else {
+                E itemToReturn;
+                itemToReturn = ((L2Array) l1Array[loc.level1Index]).items[loc.level2Index];
+                loc.moveToNext();
+                return itemToReturn;
+            }
         }
 
         /**
